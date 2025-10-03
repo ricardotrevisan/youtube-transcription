@@ -1,0 +1,10 @@
+# requirements.txt
+
+# Whisper do GitHub
+git+https://github.com/openai/whisper.git
+
+# Download de vídeos do YouTube
+yt-dlp
+
+# Transformers (Hugging Face)
+transformers
