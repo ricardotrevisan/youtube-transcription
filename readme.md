@@ -1,7 +1,17 @@
-# YouTube Transcription Project
+# YouTube Transcription
 
-This project uses Whisper, PyTorch, Hugging Face and other libraries to transcribe and summarize YouTube videos.  
-To fully leverage GPU acceleration, it's recommended to run on **Linux or WSL** with **CUDA support**.
+
+Transcribe and summarize YouTube videos using **Whisper**, **PyTorch**, **Hugging Face**, and other libraries.  
+For optimal performance, use **Linux or WSL** with **CUDA-enabled GPU**.
+
+---
+
+## 🚀 Features
+
+- Automatic transcription of YouTube videos.
+- Summarization using pre-trained Hugging Face models (BART).
+- GPU acceleration for faster processing.
+- Easy setup with Python virtual environments.
 
 ---
 
@@ -51,4 +61,11 @@ if torch.cuda.is_available():
 
 Make sure to use Python 3.12 for compatibility with PyTorch CUDA builds.
 
-WSL2 is recommended on Windows for GPU support.
+On Windows, WSL2 is recommended for GPU support.
+
+BART model fine-tuned on CNN Daily Mail is effective for:
+* Text summarization
+* Translation
+* Comprehension tasks (e.g., text classification, QA)
+
+[Hugging Face BART Model](https://huggingface.co/facebook/bart-large-cnn)
