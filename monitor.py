@@ -303,7 +303,7 @@ def save_seen(seen_set):
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(list(seen_set), f, ensure_ascii=False, indent=2)
 
-def monitor_channel(channel_url: str, poll_interval: int = 600, model_size: str = 'base', ollama_model: str = None):
+def monitor_channel(channel_url: str, poll_interval: int = 600, model_size: str = 'base', ollama_model: str = None, summarize: bool = False):
     """Continuously poll a channel for new videos and transcribe them.
 
     - channel_url: something yt_dlp accepts (channel page, handle, or uploads playlist)
@@ -347,18 +347,19 @@ def monitor_channel(channel_url: str, poll_interval: int = 600, model_size: str 
                     transcription = transcribe_with_model(model, audio_file)
                     meta = get_video_metadata(v.get('url') or v.get('webpage_url') or '')
                     save_locally(transcription, video_id=vid, title=meta.get('title'), publish_date=meta.get('publish_date'), url=meta.get('url'))
-                    # Create and save a summary for the transcription (same behavior as --once)
-                    try:
-                        if ollama_model:
-                            final_summary = summarize_text(transcription, max_length=1500, min_length=50, do_sample=False, use_ollama=True, ollama_model=ollama_model)
-                        else:
-                            chunks = chunk_text(transcription)
-                            summaries = [summarize_text(chunk, max_length=150, min_length=50, do_sample=False) for chunk in chunks]
-                            final_summary = " ".join(summaries)
-                        summary_filename = f"summaries/summary_transcription_{vid}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
-                        save_locally(final_summary, filename=summary_filename, raw=False, video_id=vid, title=meta.get('title'), publish_date=meta.get('publish_date'), url=meta.get('url'))
-                    except Exception as se:
-                        print(f"Failed to summarize {vid}: {se}")
+                    # Create and save a summary for the transcription only when requested
+                    if summarize:
+                        try:
+                            if ollama_model:
+                                final_summary = summarize_text(transcription, max_length=1500, min_length=50, do_sample=False, use_ollama=True, ollama_model=ollama_model)
+                            else:
+                                chunks = chunk_text(transcription)
+                                summaries = [summarize_text(chunk, max_length=150, min_length=50, do_sample=False) for chunk in chunks]
+                                final_summary = " ".join(summaries)
+                            summary_filename = f"summaries/summary_transcription_{vid}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+                            save_locally(final_summary, filename=summary_filename, raw=False, video_id=vid, title=meta.get('title'), publish_date=meta.get('publish_date'), url=meta.get('url'))
+                        except Exception as se:
+                            print(f"Failed to summarize {vid}: {se}")
                     if vid:
                         seen.add(vid)
                         save_seen(seen)
@@ -379,6 +380,7 @@ if __name__ == "__main__":
     parser.add_argument('--once', action='store_true', help='When used with --monitor do a single pass then exit.')
     parser.add_argument('--video', help='Transcribe a single video URL and exit.')
     parser.add_argument('--ollama-model', help='Use Ollama for summarization and specify the model name (e.g. "gpt-oss:latest"). If set, Ollama will be used for summaries.', default=None)
+    parser.add_argument('--summarize', action='store_true', help='If set, create summaries for transcriptions. By default summaries are NOT created.')
 
     args = parser.parse_args()
 
@@ -389,6 +391,20 @@ if __name__ == "__main__":
         audio_file = download_audio(args.video, output_base=base)
         transcription = transcribe_audio(audio_file, model_size=args.model_size)
         save_locally(transcription, video_id=vid)
+        # Only create a summary for single-video runs when explicitly requested
+        if args.summarize:
+            try:
+                meta = get_video_metadata(args.video)
+                if args.ollama_model:
+                    final_summary = summarize_text(transcription, max_length=1500, min_length=50, do_sample=False, use_ollama=True, ollama_model=args.ollama_model)
+                else:
+                    chunks = chunk_text(transcription)
+                    summaries = [summarize_text(chunk, max_length=150, min_length=50, do_sample=False) for chunk in chunks]
+                    final_summary = " ".join(summaries)
+                summary_filename = f"summaries/summary_transcription_{vid}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+                save_locally(final_summary, filename=summary_filename, raw=False, video_id=vid, title=meta.get('title'), publish_date=meta.get('publish_date'), url=meta.get('url'))
+            except Exception as se:
+                print(f"Failed to summarize {vid}: {se}")
     elif args.monitor:
         channel = args.monitor
         if args.once:
@@ -424,14 +440,19 @@ if __name__ == "__main__":
                     save_locally(transcription, video_id=vid, title=meta.get('title'), publish_date=meta.get('publish_date'), url=meta.get('url'))
                     if vid:
                         seen.add(vid)
-                    if args.ollama_model:
-                        final_summary = summarize_text(transcription, max_length=1500, min_length=50, do_sample=False, use_ollama=True, ollama_model=args.ollama_model)
-                    else:
-                        chunks = chunk_text(transcription)
-                        summaries = [summarize_text(chunk, max_length=150, min_length=50, do_sample=False) for chunk in chunks]
-                        final_summary = " ".join(summaries)
-                    summary_filename = f"summaries/summary_transcription_{vid}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
-                    save_locally(final_summary, filename=summary_filename, raw=False, video_id=vid, title=meta.get('title'), publish_date=meta.get('publish_date'), url=meta.get('url'))    
+                    # Only summarize when requested via --summarize
+                    if args.summarize:
+                        try:
+                            if args.ollama_model:
+                                final_summary = summarize_text(transcription, max_length=1500, min_length=50, do_sample=False, use_ollama=True, ollama_model=args.ollama_model)
+                            else:
+                                chunks = chunk_text(transcription)
+                                summaries = [summarize_text(chunk, max_length=150, min_length=50, do_sample=False) for chunk in chunks]
+                                final_summary = " ".join(summaries)
+                            summary_filename = f"summaries/summary_transcription_{vid}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+                            save_locally(final_summary, filename=summary_filename, raw=False, video_id=vid, title=meta.get('title'), publish_date=meta.get('publish_date'), url=meta.get('url'))
+                        except Exception as se:
+                            print(f"Failed to summarize {vid}: {se}")
                 except Exception as e:
                     print(f"Failed to process {v.get('id')}: {e}")
             save_seen(seen)
@@ -439,7 +460,7 @@ if __name__ == "__main__":
         else:
             print(f"Starting continuous monitor for {args.monitor} (poll every {args.poll_interval}s)")
             try:
-                monitor_channel(args.monitor, poll_interval=args.poll_interval, model_size=args.model_size, ollama_model=args.ollama_model)
+                monitor_channel(args.monitor, poll_interval=args.poll_interval, model_size=args.model_size, ollama_model=args.ollama_model, summarize=args.summarize)
             except KeyboardInterrupt:
                 print("Monitor stopped by user.")
     else:

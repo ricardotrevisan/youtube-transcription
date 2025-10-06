@@ -17,7 +17,7 @@ Supports **single video transcription** or **continuous channel monitoring** wit
 ---
 ## 🧩 Scripts Overview
 
-### 1. `youtube_transcribe_summary.py`
+### 1. `monitor.py`
 Core script that can:
 - Transcribe a **single video**
 - Monitor a **channel** continuously or in **one-shot mode**
@@ -68,27 +68,31 @@ python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_
 
 #### Transcribe a single video
 ```bash
-python youtube_transcribe_summary.py --video "https://www.youtube.com/watch?v=abcd123xyz"
+python monitor.py --video "https://www.youtube.com/watch?v=abcd123xyz"
 
 ```
 Result:
 Transcription saved in transcriptions/transcription_<videoid>_<timestamp>.md
-Summary saved in summaries/summary_transcription_<videoid>_<timestamp>.md
+
+Summary: created only if you pass the `--summarize` flag. To create a summary along with the transcription, run:
+```bash
+python monitor.py --video "https://www.youtube.com/watch?v=abcd123xyz" --summarize
+```
 
 #### Monitor a Youtube Channel
 Continuously check for new videos and transcribe them automatically.
 ```bash
-python youtube_transcribe_summary.py --monitor "https://www.youtube.com/@ProfessorBellei"
+python monitor.py --monitor "https://www.youtube.com/@ProfessorBellei"
 ```
 You can also adjust polling interval:
 ```bash
-python youtube_transcribe_summary.py --monitor "https://www.youtube.com/@ProfessorBellei" --poll-interval 900
+python monitor.py --monitor "https://www.youtube.com/@ProfessorBellei" --poll-interval 900
 ```
 (default = 600 seconds)
 
 ### One-shot mode (check once and exit)
 ```bash
-python youtube_transcribe_summary.py --monitor "https://www.youtube.com/@ProfessorBellei" --once
+python monitor.py --monitor "https://www.youtube.com/@ProfessorBellei" --once
 ```
 
 
@@ -98,13 +102,13 @@ You can use an Ollama model to perform summarization instead of the default Hugg
 
 Example (one-shot monitor using an Ollama model):
 ```bash
-python youtube_transcribe_summary.py --monitor "https://www.youtube.com/@ProfessorBellei" --once --ollama-model "gpt-oss:latest"
+python monitor.py --monitor "https://www.youtube.com/@ProfessorBellei" --once --summarize --ollama-model "gpt-oss:latest"
 ```
 
 Notes:
-- The default behavior (no `--ollama-model`) uses Hugging Face `facebook/bart-large-cnn` for summaries.
-- To use Ollama you must have the Ollama service available (locally or reachable) and the Python `ollama` package installed in your environment.
-- The flag expects the Ollama model identifier string (for example `gpt-oss:latest`); the script will pass that directly to the `ollama.generate` call.
+- Summaries are produced only when `--summarize` is provided. By default the script only downloads and transcribes videos.
+- The default summarizer (when `--summarize` is used but not `--ollama-model`) is Hugging Face `facebook/bart-large-cnn`.
+- To use Ollama you must have the Ollama service available (locally or reachable) and the Python `ollama` package installed in your environment. Pass the model identifier (for example `gpt-oss:latest`) via `--ollama-model`.
 
 
 
